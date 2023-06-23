@@ -29,9 +29,9 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: "https://static.productionready.io/images/smiley-cyrus.jpg"
     },
-    favouriteArticles: [{
+    favouriteArticles: [{ // the array of users that follow this user
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Article'
+        ref: 'Article'  
     }],
     followingUsers: [{
         type: mongoose.Schema.Types.ObjectId,

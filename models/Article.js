@@ -44,10 +44,24 @@ const articleSchema = new mongoose.Schema({
 
     articleSchema.plugin(uniqueValidator);
 
-    articleSchema.pre('save', function(next){
-        this.slug = slugify(this.title, { lower: true, replacement: '-'});
+    articleSchema.pre('save', async function (next) {
+        if (this.isModified('title')) {
+          const slug = slugify(this.title, { lower: true, replacement: '-' });
+      
+          // Check if the generated slug already exists
+          const slugRegex = new RegExp(`^${slug}(-[0-9]*)?$`, 'i');
+          const articlesWithSameSlug = await this.constructor.find({ slug: slugRegex });
+      
+          if (articlesWithSameSlug.length > 0) {
+            // Append a unique identifier to the slug
+            this.slug = `${slug}-${articlesWithSameSlug.length + 1}`;
+          } else {
+            this.slug = slug;
+          }
+        }
+      
         next();
-    });
+      });      
     
     articleSchema.methods.updateFavoriteCount = async function () {
         const favoriteCount = await User.count({
@@ -72,7 +86,7 @@ const articleSchema = new mongoose.Schema({
         tagList: this.tagList,
         favorited: user ? user.isFavourite(this._id) : false,
         favoritesCount: this.favouritesCount,
-        author:  authorObj.toProfileJSON(user)
+        author: authorObj.toProfileJSON(user)
     }
 }
 
