@@ -76,7 +76,60 @@ userSchema.methods.toProfileJSON = function (user) {
         username: this.username,
         bio: this.bio,
         image: this.image,
+        following: user ? user.isFollowing(this._id) : false 
     }
 };
+
+userSchema.methods.isFollowing = function (id) {
+    const idStr = id.toString();
+    for (const followingUser of this.followingUsers) {
+        if (followingUser.toString() === idStr) {
+            return true;
+        }
+    }
+    return false;
+};
+
+userSchema.methods.follow = function (id) {
+    if(this.followingUsers.indexOf(id) === -1){
+        this.followingUsers.push(id);
+    }
+    return this.save();
+};
+
+userSchema.methods.unfollow = function (id) {
+    if(this.followingUsers.indexOf(id) !== -1){
+        this.followingUsers.remove(id);
+    }
+    return this.save();
+};
+
+userSchema.methods.isFavourite = function (id) {
+    const idStr = id.toString();
+    for (const article of this.favouriteArticles) {
+        if (article.toString() === idStr) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+userSchema.methods.favorite = function (id) {
+    if(this.favouriteArticles.indexOf(id) === -1){
+        this.favouriteArticles.push(id);
+    }
+
+    return this.save();
+}
+
+userSchema.methods.unfavorite = function (id) {
+    if(this.favouriteArticles.indexOf(id) !== -1){
+        this.favouriteArticles.remove(id);
+    }
+
+    return this.save();
+};
+
 
 module.exports = mongoose.model('User', userSchema);
