@@ -67,6 +67,24 @@ const loginUser = asyncHandler(async (req, res) => {
 
 }) 
 
+// @desc get currently logged-in user
+// @route GET /api/user
+// @access Private
+// @return User
+const getCurrentUser = asyncHandler(async (req, res) => {
+    const id = req.user.userId;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+        return res.status(404).json({message: "User Not Found"});
+    }
+
+    res.status(200).json({
+        user: user.toUserResponse()
+    })
+})
+
 // @desc update currently logged-in user
 // Warning: if password or email is updated, client-side must update the token
 // @route PUT /api/user
@@ -79,13 +97,62 @@ const updateUser = asyncHandler(async (req, res) => {
         return res.status(400).json({message: "Required a User object"});
     }
 
-    const email = req.userEmail;
+    const userId = req.user.userId;
 
-    const target = await User.findOne({ email }).exec();
+    const target = await User.findById(userId); 
  
-    
+    if (!target) {
+        return res.status(404).json({message: "User Not Found"});
+    }
+
+    if (user.email) {
+        target.email = user.email;
+    }
+
+    if (user.username) {
+        target.username = user.username;
+    }   
+
+    if (user.password) {
+        const hashedPwd = await bcrypt.hash(user.password, 10);
+        target.password = hashedPwd;
+    }
+
+    if (typeof(user.image) !== 'undefined') {
+        target.image = user.image;
+    } 
+
+    if (typeof(user.bio) !== 'undefined') {
+        target.bio = user.bio;
+    }
+
+    await target.save();
+
+    return res.status(200).json({
+        user: target.toUserResponse()
+    });
+
 })
 
+// @desc delete user
+// Warning: if password or email is updated, client-side must update the token
+// @route DELETE /api/user
+// @access Private
+// @return User
+const deleteUser = asyncHandler(async (req, res) => {
+    const id = req.user.userId;
+
+    const target = await User.findByIdAndDelete(id); 
+ 
+    if (!target) {
+        return res.status(404).json({message: "User Not Found"});
+    }
+
+    return res.status(200).json({
+        message: "User deleted"
+    });
+
+})
 module.exports = {
-    registerUser, loginUser
+    registerUser, loginUser, getCurrentUser, updateUser, deleteUser
 }
