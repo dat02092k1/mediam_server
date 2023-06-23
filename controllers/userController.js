@@ -153,6 +153,72 @@ const deleteUser = asyncHandler(async (req, res) => {
     });
 
 })
+
+const gerProfile = asyncHandler(async (req, res) => {
+    const { username } = req.params;
+
+    const loggedin = req.loggedin;
+
+    const user = await User.findOne({ username });
+
+    if (!user) {
+        return res.status(404).json({
+            message: "User Not Found"
+        })
+    }
+
+    if (!loggedin) {
+        return res.status(200).json({
+            profile: user.toProfileJSON(false)
+        });
+    }
+    else {
+        const loginUser = await User.findOne({ email: req.userEmail }).exec();
+        return res.status(200).json({
+            profile: user.toProfileJSON(loginUser)
+        })
+
+    }
+})
+
+const followUser = asyncHandler(async (req, res) => {
+    const { username } = req.params;
+
+    const currentUser = await User.findOne({ email: req.userEmail }).exec();
+    const user = await User.findOne({ username }).exec();
+
+    if (!user || !currentUser) {
+        return res.status(404).json({
+            message: "User Not Found"
+        })
+    }
+
+    await currentUser.follow(user._id);
+
+    return res.status(200).json({
+        profile: user.toProfileJSON(currentUser)
+    });                  
+})
+
+const unfollowUser = asyncHandler(async (req, res) => {
+    const { username } = req.params;
+
+    const currentUser = await User.findOne({ email: req.userEmail }).exec();
+    const user = await User.findOne({ username }).exec();
+
+    if (!user || !currentUser) {
+        return res.status(404).json({
+            message: "User Not Found"
+        })
+    }
+
+    await currentUser.unfollowUser(user._id);
+
+    return res.status(200).json({
+        profile: user.toProfileJSON(currentUser)
+    });                  
+})
+
 module.exports = {
-    registerUser, loginUser, getCurrentUser, updateUser, deleteUser
+    registerUser, loginUser, getCurrentUser, updateUser, deleteUser, gerProfile, followUser, unfollowUser
 }
