@@ -14,6 +14,8 @@ app.use(cors(corOptions));
 app.use(express.json()); 
 app.use(cookieParser());
 
+app.use('/api', require('./routes/user'));
+
 mongoose.connection.once('open', () => {
     console.log('Connected to MongoDB');
     app.listen(PORT, () => {

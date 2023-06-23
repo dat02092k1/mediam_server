@@ -18,11 +18,15 @@
   },
   "homepage": "https://github.com/dat02092k1/mediam_server#readme",
   "dependencies": {
+    "bcrypt": "^5.1.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "express-async-handler": "^1.1.4",
+    "jsonwebtoken": "^9.0.0",
     "mongoose": "^7.3.1",
+    "mongoose-unique-validator": "^4.0.0",
     "nodemon": "^2.0.22"
   }
 }
