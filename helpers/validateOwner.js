@@ -1,6 +1,7 @@
-const validateOwner = async (req, res, id) => {
+const validateOwner = async (userId, res, id) => {
     try {
-        if (req.user.id !== id) {
+        console.log(userId, id);
+        if (userId !== id.toString()) {
             return res.status(403).json({ error: 'Only the author can delete his article' });  
         }
     } catch (error) {

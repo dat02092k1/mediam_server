@@ -76,6 +76,7 @@ const articleSchema = new mongoose.Schema({
     // user is the logged-in user
     articleSchema.methods.toArticleResponse = async function (user) {
     const authorObj = await User.findById(this.author).exec();
+    console.log(authorObj);
     return {
         slug: this.slug,
         title: this.title,
@@ -86,7 +87,7 @@ const articleSchema = new mongoose.Schema({
         tagList: this.tagList,
         favorited: user ? user.isFavourite(this._id) : false,
         favoritesCount: this.favouritesCount,
-        author: authorObj.toProfileJSON(user)
+        author: authorObj?.toProfileJSON(user)
     }
 }
 

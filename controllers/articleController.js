@@ -1,6 +1,5 @@
 const Article = require('../models/Article');
 const User = require('../models/User');
-const validateOwner = require('../helpers/validateOwner');
 
 const asyncHandler = require('express-async-handler');
 
@@ -52,16 +51,100 @@ const getArticleBySlug = asyncHandler(async (req, res) => {
     })
 })
 
+const getArtcleByPage = asyncHandler (async (req, res) => {
+    let limit = parseInt(req.query.limit) || 10;
+    let offset = parseInt(req.query.offset) || 0;
+
+    const userId = req.user.userId;
+    const user = await User.findById(userId).exec();
+
+    const filteredArticles = await Article.find({_id: { $in: user.favouriteArticles }})
+        .limit((limit))
+        .skip((offset))
+        .exec(); 
+
+    const articleCount = await Article.count({_id: {$in: user.favouriteArticles }});
+
+    return res.status(200).json({
+        articles: await Promise.all(filteredArticles.map(async article => { return await article.toArticleResponse(user)})),
+        articleCount
+    })
+})
+
+const getArticleByQuery = asyncHandler (async (req, res) => {
+    let limit = parseInt(req.query.limit) || 10;
+    let offset = parseInt(req.query.offset) || 0;
+    let query = {};
+     
+    if (req.query.limit) {
+        limit = req.query.limit;
+    }
+
+    if (req.query.offset) {
+        offset = req.query.offset;
+    }
+
+    if (req.query.tag) {
+        query.tagList = {$in: [req.query.tag]}
+    }
+
+    if (req.query.author) {
+        const author = await User.findOne({username: req.query.author}).exec();
+        if (author) {
+            query.author = author._id;
+        }
+    }
+
+    if (req.query.favorited) {
+        const favoriter = await User.findOne({username: req.query.favorited}).exec();
+        if (favoriter) {
+            query._id = {$in: favoriter.favouriteArticles}
+        }
+    }
+     
+    const filteredArticles = await Article.find(query)
+        .limit((limit))
+        .skip((offset))
+        .sort({createdAt: 'desc'}).exec();
+     
+    const articleCount = await Article.count(query);
+     
+    if (req.loggedin) {
+        console.log('logged in')
+        const loginUser = await User.findById(req.user.userId).exec();
+         
+        return res.status(200).json({
+            articles: await Promise.all(filteredArticles.map(async article => { return await article.toArticleResponse(loginUser)})),
+            articlesCount: articleCount
+        });
+    } else {
+        console.log('not logged in')
+        return res.status(200).json({
+            articles: await Promise.all(filteredArticles.map(async article => {
+                return await article.toArticleResponse(false);
+            })),
+            articlesCount: articleCount
+        });
+    }
+})
+
 const deleteArticle = asyncHandler (async (req, res) => {
     const { slug } = req.params;
-    const { userId } = req.user.userId;
+    const id = req.user.userId;
 
     const article = await Article.findOne({slug}).exec();
 
-    validateOwner(req, res, article.author);
+    if (!article) return res.status(404).json({ message: 'Article not found' });
 
-    await Article.deleteOne({slug: slug});
-        res.status(200).json({
+    if (article.author.toString() !== id.toString()) {
+        return res.status(403).json({
+            message: "Only the author can delete his article"
+        })
+    }
+
+    const target = await Article.deleteOne({slug: slug});
+
+    res.status(200).json({
             message: "Article successfully deleted!!!"
         }) 
 })
@@ -75,7 +158,7 @@ const updateArticle = asyncHandler (async (req, res) => {
     const currentUser = await User.findById(id).exec();
 
     validateOwner(req, res, article.author);
-
+ 
     if (article.title) {
         existArc.title = article.title;
     }
@@ -88,10 +171,10 @@ const updateArticle = asyncHandler (async (req, res) => {
     if (article.tagList) {
         existArc.tagList = article.tagList;
     }
-
+    console.log(existArc);
     await existArc.save(); 
 
-    const updatedArticle = await target.toArticleResponse(currentUser);
+    const updatedArticle = await existArc.toArticleResponse(currentUser);
     return res.status(200).json({ article: updatedArticle });
 })
 
@@ -155,7 +238,17 @@ const unFavoriteArticle = asyncHandler (async (req, res) => {
     });
 });
 
+const validateOwner = async (req, res, id) => {
+    try {
+        if (req.user.id !== id.toString()) {
+            res.status(403).json({ error: 'Only the author can delete his article' });  
+        }
+    } catch (error) {
+        console.log(error);
+    }
+}
+
 module.exports =
 {
-    createArticle, getArticleBySlug, deleteArticle, updateArticle, favoriteArticle, unFavoriteArticle 
+    createArticle, getArticleBySlug, deleteArticle, updateArticle, favoriteArticle, unFavoriteArticle, getArtcleByPage, getArticleByQuery 
 }
