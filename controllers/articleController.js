@@ -1,5 +1,7 @@
 const Article = require('../models/Article');
 const User = require('../models/User');
+const Comment = require('../models/Comment');
+const Tag = require('../models/Tag');
 
 const asyncHandler = require('express-async-handler');
 
@@ -136,8 +138,8 @@ const deleteArticle = asyncHandler (async (req, res) => {
     const { slug } = req.params;
     const id = req.user.userId;
 
-    const article = await Article.findOne({slug}).exec();
-
+    const article = await Article.findOne({slug}).populate('comments').populate('tagList.articles').exec();
+                                 
     if (!article) return res.status(404).json({ message: 'Article not found' });
 
     if (article.author.toString() !== id.toString()) {
@@ -146,7 +148,15 @@ const deleteArticle = asyncHandler (async (req, res) => {
         })
     }
 
+    // Delete all comments related to the article
+    await Comment.deleteMany({ article: article._id });
+     
+    // Remove the article reference from all tags
+    await Tag.updateMany({ articles: article._id }, { $pull: { articles: article._id } });
+
+     // Delete the article
     const target = await Article.deleteOne({slug: slug});
+
 
     res.status(200).json({
             message: "Article successfully deleted!!!"
