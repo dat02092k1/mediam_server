@@ -10,6 +10,32 @@ const getTags = asyncHandler (async (req, res) => {
 
 })
 
+const getPopularTags = asyncHandler (async (req, res) => {
+    const popularTags = await Article.aggregate([
+        { $unwind: '$tagList' },
+        {
+          $group: {
+            _id: '$tagList',
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { count: -1 } },
+        { $limit: 5 },
+        {
+          $project: {
+            _id: 0,
+            tag: '$_id',
+            count: 1
+          }
+        }
+      ]);  
+
+    res.status(200).json({
+        tags: popularTags
+    });
+
+})
+
 module.exports = {
-    getTags
+    getTags, getPopularTags
 };

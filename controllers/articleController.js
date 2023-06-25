@@ -157,7 +157,6 @@ const deleteArticle = asyncHandler (async (req, res) => {
      // Delete the article
     const target = await Article.deleteOne({slug: slug});
 
-
     res.status(200).json({
             message: "Article successfully deleted!!!"
         }) 
