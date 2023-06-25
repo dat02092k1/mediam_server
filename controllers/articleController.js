@@ -22,10 +22,14 @@ const createArticle = asyncHandler(async (req, res) => {
 
     if (Array.isArray(article.tagList) && article.tagList?.length > 0) {
         newArc.tagList = article.tagList;
+            // if in Tags exist a tag with equal tag, add article._id
     }
 
     await newArc.save();
-    console.log(author);
+    
+    if (Array.isArray(article.tagList) && article.tagList?.length > 0) {
+        await newArc.addTags(article.tagList);
+    }
 
     return res.status(200).json({
         article: await newArc.toArticleResponse(author)
@@ -151,13 +155,17 @@ const deleteArticle = asyncHandler (async (req, res) => {
 
 const updateArticle = asyncHandler (async (req, res) => {
     const { slug } = req.params;
-    const { id } = req.user.userId;
+    const id  = req.user.userId;
     const { article } = req.body;
-
+     
     const existArc = await Article.findOne({slug}).exec();
     const currentUser = await User.findById(id).exec();
 
-    validateOwner(req, res, article.author);
+    if (existArc.author.toString() !== id) {
+        return res.status(403).json({
+            message: "Only the author can delete his article"
+        })
+    }
  
     if (article.title) {
         existArc.title = article.title;
@@ -169,9 +177,9 @@ const updateArticle = asyncHandler (async (req, res) => {
         existArc.body = article.body;
     }
     if (article.tagList) {
-        existArc.tagList = article.tagList;
+        await existArc.handleTags(article.tagList);
     }
-    console.log(existArc);
+     
     await existArc.save(); 
 
     const updatedArticle = await existArc.toArticleResponse(currentUser);

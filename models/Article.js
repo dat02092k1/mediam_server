@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const uniqueValidator = require('mongoose-unique-validator');
 const slugify = require('slugify');
 const User = require('./User');
+const Tag = require('./Tag');
 
 const articleSchema = new mongoose.Schema({
     slug: {
@@ -104,5 +105,79 @@ articleSchema.methods.removeComment = function (commentId) {
     }
     return this.save();
 };
+
+articleSchema.methods.addTags = async function (tagList) {
+    const existingTags = await Tag.find({ tagName: { $in: tagList } }).lean(); //  [{'a', '1'}, {'b', '2'}]
+
+    const existingTagNames = existingTags.map((tag) => tag.tagName); //     ['a', 'b']   
+
+    const newTags = tagList.filter((tagName) => !existingTagNames.includes(tagName)); // ['c', 'd']
+
+    const bulkOps = [];
+
+     // Update existing tags               ['a', 'b']                       
+     for (const tag of existingTags) {
+        if(tag.articles.indexOf(this._id) === -1){
+            tag.articles.push(this._id);
+        }     
+         
+        bulkOps.push({
+            updateOne: {
+                filter: { _id: tag._id },
+                update: { $addToSet: { articles: this._id } }
+            }
+        });
+    }
+    
+    // Create new tags
+    for (const newTagName of newTags) {
+        const newTag = { tagName: newTagName, articles: [this._id] };
+        bulkOps.push({
+            insertOne: { document: newTag }
+        });
+    }
+
+    if (bulkOps.length > 0) {
+        await Tag.bulkWrite(bulkOps);
+    }
+};
+
+articleSchema.methods.handleTags = async function (tagList) {
+    const existingTags = await Tag.find({ tagName: { $in: tagList } }).lean(); //  [{'a', '1'}, {'b', '2'}]
+    const existingTagNames = existingTags.map((tag) => tag.tagName);       // ['a', 'b', 'c', 'd']           
+
+    // Remove tags that are not in the updated tagList
+    const removeTags = this.tagList.filter((tagName) => !tagList.includes(tagName));
+    const removingTags = await Tag.find({ tagName: { $in: removeTags } });
+     
+    for (const tag of removingTags) {
+        if(tag.articles.map(String).includes(this._id.toString()) !== -1){
+            console.log(tag.articles);  
+            const updatedArticles = tag.articles.filter(articleId => !articleId.equals(this._id));
+            console.log(updatedArticles);
+            tag.articles = updatedArticles;    
+        }             
+        tag.save();
+    }         
+
+    /**
+     * new: ["Coding", "Vietnam", "NodeJS", "VueJS"]
+     * former: ["Coding", "C#"]
+     * in DB: ["Coding", "NodeJS", "C#"]
+     * new: ["Vietnam", "VueJS"] -> Create new Tag & add id article 
+     * old but thua: ["C#"] -> remove id artice 
+     */
+    this.tagList = tagList;
+
+    // Add new tags
+    const newTags = tagList.filter((tagName) => !existingTagNames.includes(tagName));
+
+    if (newTags) {
+    for (const newTagName of newTags) {
+        const newTag = { tagName: newTagName, articles: [this._id] };
+        await Tag.create(newTag);
+    }                
+    }
+}
 
 module.exports = mongoose.model('Article', articleSchema);
