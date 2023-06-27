@@ -81,7 +81,7 @@ const getArticleByQuery = asyncHandler (async (req, res) => {
     let limit = parseInt(req.query.limit) || 10;
     let offset = parseInt(req.query.offset) || 0;
     let query = {};
-     
+    
     if (req.query.limit) {
         limit = req.query.limit;
     }
@@ -92,6 +92,7 @@ const getArticleByQuery = asyncHandler (async (req, res) => {
 
     if (req.query.tag) {
         query.tagList = {$in: [req.query.tag]}
+        console.log(query.tagList)
     }
 
     if (req.query.author) {
